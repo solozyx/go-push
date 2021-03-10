@@ -2,8 +2,9 @@ package connection
 
 import (
 	"errors"
-	"github.com/gorilla/websocket"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 type Connection struct {
@@ -38,6 +39,21 @@ func InitConnection(wsConn *websocket.Conn) (conn *Connection, err error) {
 	return
 }
 
+// API
+
+// 封装线程安全的 WriteMessage 可以被并发调用线程安全
+func (conn *Connection) WriteMessage(data []byte) (err error) {
+	select {
+	// 发送队列没满 就写入channel了
+	// 如果满了就 阻塞在 case conn.outChan <- data:
+	case conn.outChan <- data:
+	// 如果网络连接出错了
+	case <-conn.closeChan:
+		err = errors.New("connection is closed ")
+	}
+	return
+}
+
 // 封装线程安全的 ReadMessage 可以被并发调用线程安全
 func (conn *Connection) ReadMessage() (data []byte, err error) {
 	// Connection.ReadMessage 用户在调用的时候 底层网络连接出错
@@ -54,22 +70,7 @@ func (conn *Connection) ReadMessage() (data []byte, err error) {
 	return
 }
 
-// API
-
-// 封装线程安全的 WriteMessage 可以被并发调用线程安全
-func (conn *Connection) WriteMessage(data []byte) (err error) {
-	select {
-	// 发送队列没满 就写入channel了
-	// 如果满了就 阻塞在 case conn.outChan <- data:
-	case conn.outChan <- data:
-	// 如果网络连接出错了
-	case <-conn.closeChan:
-		err = errors.New("connection is closed ")
-	}
-	return
-}
-
-// websocket框架的Close方法是线程安全的 可以被并发多线程调用 可以被调用多次 成为 可重入调用
+// websocket框架的Close方法是线程安全的 可以被并发多线程调用 可以被调用多次 称为 可重入调用
 func (conn *Connection) Close() {
 	// 底层的websocket关闭
 	conn.wsConn.Close()
