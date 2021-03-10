@@ -1,11 +1,27 @@
 package main
 
 import (
-	"github.com/gorilla/websocket"
-	"go-push/connection"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/websocket"
+
+	"go-push/connection"
 )
+
+func main() {
+	// http://localhost:7777/ws
+
+	// 1.路由接口地址
+	// 2.回调函数-当有请求来的时候这个函数会被回调
+	// http 配置路由 /ws 接口
+	// 当客户端调用 /ws 接口 wsHandler函数就会被调用
+	http.HandleFunc("/ws", wsHandler)
+	// 启动服务端
+	// 绑定监听端口对外提供http服务
+	// 前面配置好了 /ws 路由 这里的第2个参数就可以忽略
+	http.ListenAndServe("0.0.0.0:7777", nil)
+}
 
 var (
 	// 转换器 完成http->websocket转换的握手
@@ -68,18 +84,4 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 ERR:
 	conn.Close()
-}
-
-func main() {
-	// http://localhost:7777/ws
-
-	// 1.路由接口地址
-	// 2.回调函数-当有请求来的时候这个函数会被回调
-	// http 配置路由 /ws 接口
-	// 当客户端调用 /ws 接口 wsHandler函数就会被调用
-	http.HandleFunc("/ws", wsHandler)
-	// 启动服务端
-	// 绑定监听端口对外提供http服务
-	// 前面配置好了 /ws 路由 这里的第2个参数就可以忽略
-	http.ListenAndServe("0.0.0.0:7777", nil)
 }
